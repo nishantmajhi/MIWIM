@@ -1,0 +1,1168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MIWIM</title>
+    <!-- The wordmark logo, redrawn as a standalone favicon. It can't reuse the
+         inline SVG from the topbar: that one styles itself with the page's CSS
+         variables and sets the numeral in Fraunces, and a favicon is rendered
+         outside the document, with no stylesheet and no webfont. So the colours
+         are literal and the "1" is a path rather than text. Inlined as a data
+         URI, which keeps it a zero-request icon and keeps the app a single
+         self-contained file. -->
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Ccircle%20cx='16'%20cy='16'%20r='14.6'%20fill='%23f7f5ef'%20stroke='%2322261f'%20stroke-width='2'/%3E%3Cpath%20fill='%2322261f'%20d='M11.6%2011.1%20L16.6%207.4%20L18.1%207.4%20L18.1%2019.4%20L20.6%2019.4%20L20.6%2021.2%20L12.6%2021.2%20L12.6%2019.4%20L15.4%2019.4%20L15.4%2010.2%20L12.4%2012.4%20Z'/%3E%3Cline%20x1='9.6'%20y1='25'%20x2='22.4'%20y2='25'%20stroke='%23a6752c'%20stroke-width='2.6'%20stroke-linecap='round'/%3E%3C/svg%3E"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      .mrg-root {
+        --paper: #ece9e1;
+        --paper-raised: #f7f5ef;
+        --ink: #22261f;
+        --ink-soft: #55584e;
+        --rule: #d9d4c6;
+        --gold: #a6752c;
+        --gold-wash: rgba(166, 117, 44, 0.14);
+        --slate: #3d5a80;
+        --slate-wash: rgba(61, 90, 128, 0.12);
+        font-family: "Inter", sans-serif;
+        color: var(--ink);
+        background: var(--paper);
+        min-height: 100vh;
+        width: 100%;
+      }
+      .mrg-serif {
+        font-family: "Fraunces", serif;
+      }
+      .mrg-mono {
+        font-family: "IBM Plex Mono", monospace;
+      }
+
+      .mrg-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 28px;
+        border-bottom: 1px solid var(--rule);
+        background: var(--paper-raised);
+      }
+      .mrg-mark {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .mrg-logo {
+        flex-shrink: 0;
+        transition: transform 0.15s ease;
+      }
+      .mrg-mark:hover .mrg-logo {
+        transform: rotate(-4deg);
+      }
+      .mrg-wordmark {
+        font-size: 19px;
+        letter-spacing: 0.01em;
+        font-weight: 600;
+      }
+      .mrg-tagline {
+        font-size: 12px;
+        color: var(--ink-soft);
+        margin-top: 1px;
+      }
+
+      .mrg-btn {
+        font-family: "Inter", sans-serif;
+        font-size: 13.5px;
+        font-weight: 500;
+        padding: 9px 16px;
+        border-radius: 3px;
+        border: 1px solid var(--ink);
+        background: transparent;
+        color: var(--ink);
+        cursor: pointer;
+        transition:
+          background 0.15s ease,
+          color 0.15s ease,
+          opacity 0.15s ease;
+      }
+      .mrg-btn:hover {
+        background: var(--ink);
+        color: var(--paper-raised);
+      }
+      .mrg-btn:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+      .mrg-btn:disabled:hover {
+        background: transparent;
+        color: var(--ink);
+      }
+
+      .mrg-btn-primary {
+        background: var(--ink);
+        color: var(--paper-raised);
+      }
+      .mrg-btn-primary:hover {
+        background: #383c30;
+        color: var(--paper-raised);
+      }
+      .mrg-btn-primary:disabled {
+        background: var(--rule);
+        border-color: var(--rule);
+        color: var(--ink-soft);
+        opacity: 1;
+      }
+
+      .mrg-panes {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        min-height: calc(100vh - 66px);
+      }
+      @media (max-width: 820px) {
+        .mrg-panes {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .mrg-pane {
+        padding: 26px 30px 60px;
+        position: relative;
+      }
+      .mrg-pane-left {
+        border-right: 1px solid var(--rule);
+      }
+      @media (max-width: 820px) {
+        .mrg-pane-left {
+          border-right: none;
+          border-bottom: 1px solid var(--rule);
+        }
+      }
+
+      .mrg-pane-label {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 18px;
+      }
+      .mrg-eyebrow {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+      }
+      .mrg-filename {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 11.5px;
+        color: var(--ink-soft);
+      }
+
+      .mrg-sheet {
+        background: var(--paper-raised);
+        border: 1px solid var(--rule);
+        border-radius: 2px;
+        padding: 34px 38px;
+        box-shadow: 0 1px 0 var(--rule);
+      }
+      .mrg-doc-title {
+        font-size: 17px;
+        font-weight: 600;
+        margin-bottom: 14px;
+      }
+      .mrg-doc-p {
+        font-size: 15px;
+        line-height: 1.75;
+        color: var(--ink);
+        margin-bottom: 16px;
+      }
+
+      .mrg-cite {
+        padding: 1px 3px;
+        border-radius: 2px;
+        background: var(--gold-wash);
+        cursor: default;
+        transition: background 0.15s ease;
+      }
+      .mrg-cite.mrg-active {
+        background: var(--gold);
+        color: var(--paper-raised);
+      }
+
+      .mrg-note {
+        cursor: default;
+        color: var(--slate);
+        font-weight: 600;
+        padding: 0 1px;
+        border-radius: 2px;
+        transition:
+          background 0.15s ease,
+          color 0.15s ease;
+      }
+      .mrg-note.mrg-active {
+        background: var(--slate);
+        color: var(--paper-raised);
+      }
+      .mrg-note.mrg-nolink {
+        color: var(--ink-soft);
+      }
+
+
+      /* Heading paragraphs inside the preview sheets */
+      .mrg-doc-h {
+        font-weight: 600;
+        color: var(--ink);
+        margin: 22px 0 10px;
+        line-height: 1.35;
+      }
+      .mrg-doc-h0 {
+        font-size: 16.5px;
+      }
+      .mrg-doc-h1 {
+        font-size: 15.5px;
+      }
+      .mrg-doc-h2 {
+        font-size: 14.5px;
+      }
+      .mrg-doc-h3 {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+      }
+
+      .mrg-hr {
+        border: none;
+        border-top: 1px solid var(--rule);
+        margin: 26px 0 18px;
+      }
+      .mrg-fn-heading {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        margin-bottom: 12px;
+      }
+      .mrg-fn-item {
+        display: flex;
+        gap: 10px;
+        font-size: 13px;
+        line-height: 1.55;
+        color: var(--ink-soft);
+        padding: 7px 8px;
+        border-radius: 3px;
+        margin-bottom: 2px;
+        transition: background 0.15s ease;
+      }
+      .mrg-fn-item.mrg-active {
+        background: var(--slate-wash);
+        color: var(--ink);
+      }
+      .mrg-fn-num {
+        font-family: "IBM Plex Mono", monospace;
+        color: var(--slate);
+        font-weight: 500;
+        flex-shrink: 0;
+      }
+      .mrg-fn-link {
+        color: var(--slate);
+        text-decoration: underline;
+        text-decoration-color: var(--slate-wash);
+        word-break: break-all;
+      }
+
+      /* A footnote row is a number, then a body that stacks its text, its link
+         and (when needed) a URL field. Giving each row real vertical space and
+         a hairline between them is what stops a list of long URLs reading as
+         one solid block — the same problem the blank paragraph solves inside
+         the generated .docx. */
+      .mrg-fn-note {
+        align-items: baseline;
+        padding: 11px 8px;
+        margin-bottom: 0;
+        border-bottom: 1px solid var(--rule);
+      }
+      .mrg-fn-note:last-child {
+        border-bottom: none;
+      }
+      .mrg-fn-body {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        min-width: 0;
+        flex: 1;
+      }
+      .mrg-fn-text {
+        font-family: "Inter", sans-serif;
+        line-height: 1.6;
+      }
+      .mrg-note-existing {
+        color: var(--ink-soft);
+      }
+      .mrg-note-existing.mrg-active {
+        background: var(--ink-soft);
+        color: var(--paper-raised);
+      }
+      .mrg-fn-url-input {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 12px;
+        border: 1px solid var(--rule);
+        background: var(--paper);
+        color: var(--ink);
+        border-radius: 3px;
+        padding: 4px 7px;
+        width: 220px;
+        max-width: 100%;
+      }
+      .mrg-fn-url-input:focus {
+        outline: none;
+        border-color: var(--slate);
+      }
+      .mrg-fn-missing-badge {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--gold);
+        border: 1px solid var(--gold);
+        border-radius: 2px;
+        padding: 1px 5px;
+        flex-shrink: 0;
+        align-self: flex-start;
+      }
+
+      .mrg-notice {
+        font-size: 12.5px;
+        color: var(--ink-soft);
+        background: var(--gold-wash);
+        border: 1px solid var(--rule);
+        border-radius: 4px;
+        padding: 9px 12px;
+        margin-bottom: 16px;
+      }
+      .mrg-notice strong {
+        color: var(--ink);
+      }
+
+      .mrg-fn-empty {
+        font-size: 13px;
+        font-style: italic;
+        color: var(--ink-soft);
+        padding: 7px 8px;
+      }
+
+      /* Empty state */
+      .mrg-drop {
+        height: 340px;
+        border: 1.5px dashed var(--rule);
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        text-align: center;
+        transition:
+          border-color 0.15s ease,
+          background 0.15s ease;
+      }
+      .mrg-drop.mrg-drag {
+        border-color: var(--gold);
+        background: var(--gold-wash);
+      }
+      .mrg-drop-title {
+        font-size: 14.5px;
+        font-weight: 500;
+      }
+      .mrg-drop-sub {
+        font-size: 12.5px;
+        color: var(--ink-soft);
+        max-width: 260px;
+      }
+
+      .mrg-empty-right {
+        height: 340px;
+        border: 1.5px dashed var(--rule);
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        text-align: center;
+        color: var(--ink-soft);
+      }
+      .mrg-empty-right-title {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--ink);
+      }
+      .mrg-empty-right-sub {
+        font-size: 12.5px;
+        max-width: 240px;
+      }
+
+      /* Processing */
+      .mrg-steps {
+        height: 340px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+      }
+      .mrg-spinner {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 2px solid var(--rule);
+        border-top-color: var(--ink);
+        animation: mrg-spin 0.8s linear infinite;
+      }
+      @keyframes mrg-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .mrg-step-text {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 12.5px;
+        color: var(--ink-soft);
+      }
+
+      .mrg-fab {
+        position: fixed;
+        bottom: 28px;
+        right: 32px;
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        line-height: 1;
+        box-shadow:
+          0 6px 18px rgba(0, 0, 0, 0.32),
+          0 2px 6px rgba(0, 0, 0, 0.22);
+        z-index: 20;
+        animation: mrg-fab-in 0.25s ease;
+      }
+      .mrg-btn-primary.mrg-fab {
+        background: #33332f;
+        border-color: #33332f;
+      }
+      .mrg-btn-primary.mrg-fab:hover {
+        background: #262622;
+        border-color: #262622;
+        box-shadow:
+          0 8px 22px rgba(0, 0, 0, 0.38),
+          0 3px 8px rgba(0, 0, 0, 0.26);
+      }
+      @keyframes mrg-fab-in {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .mrg-error {
+        font-size: 12.5px;
+        color: #8a3324;
+        background: rgba(138, 51, 36, 0.08);
+        border: 1px solid rgba(138, 51, 36, 0.25);
+        border-radius: 4px;
+        padding: 9px 12px;
+        margin-top: 10px;
+        max-width: 260px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="mrg-root" id="mrg-root">
+      <div class="mrg-topbar">
+        <div class="mrg-mark">
+          <svg width="30" height="30" viewBox="0 0 30 30" class="mrg-logo">
+            <circle
+              cx="15"
+              cy="15"
+              r="14"
+              fill="var(--paper-raised)"
+              stroke="var(--ink)"
+              stroke-width="1.2"
+            />
+            <text
+              x="15.5"
+              y="19.5"
+              text-anchor="middle"
+              font-family="Fraunces, serif"
+              font-style="italic"
+              font-weight="500"
+              font-size="14"
+              fill="var(--ink)"
+            >
+              1
+            </text>
+            <line
+              x1="9"
+              y1="23.5"
+              x2="21"
+              y2="23.5"
+              stroke="var(--gold)"
+              stroke-width="1.6"
+              stroke-linecap="round"
+            />
+          </svg>
+          <div>
+            <div class="mrg-wordmark mrg-serif">MIWIM</div>
+            <div class="mrg-tagline">
+              In-text citations, converted to linked footnotes
+            </div>
+          </div>
+        </div>
+        <div id="mrg-topbar-actions" style="display: flex; gap: 10px"></div>
+      </div>
+
+      <div class="mrg-panes">
+        <div class="mrg-pane mrg-pane-left">
+          <div class="mrg-pane-label">
+            <span class="mrg-eyebrow">Original</span>
+            <span class="mrg-filename" id="mrg-filename-left"></span>
+          </div>
+          <div id="mrg-left-content"></div>
+        </div>
+        <div class="mrg-pane">
+          <div class="mrg-pane-label">
+            <span class="mrg-eyebrow">Converted</span>
+            <span class="mrg-filename" id="mrg-filename-right"></span>
+          </div>
+          <div id="mrg-right-content"></div>
+        </div>
+      </div>
+    </div>
+    <div id="mrg-fab-slot"></div>
+
+    <script src="miwim.core.js"></script>
+    <script src="miwim.docx.js"></script>
+    <script>
+      /* ======================================================================
+         MIWIM — UI layer
+         All parsing, matching and .docx rewriting lives in miwim.core.js
+         and miwim.docx.js. Nothing leaves the browser: no upload, no
+         server, no network call beyond the fonts and JSZip in <head>.
+         ====================================================================== */
+
+      const engine = MIWIM.createDocxEngine({
+        DOMParser: window.DOMParser,
+        XMLSerializer: window.XMLSerializer,
+        JSZip: window.JSZip,
+        core: MIWIM.core,
+      });
+
+      const state = {
+        stage: "empty", // empty | processing | done
+        stepIndex: 0,
+        fileName: "",
+        active: null,
+        dragOver: false,
+        error: null,
+        originalArrayBuffer: null,
+        docTitle: "",
+        bodyParas: [],
+        refs: [],
+        hasRefsSection: true,
+        unmatched: [],
+        citationCount: 0,
+        notes: [],
+        orphanFootnotes: [],
+        alreadyConverted: false,
+      };
+
+      // ---- helpers ----
+
+      function escapeHtml(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function plural(n, word) {
+        return n + " " + word + (n === 1 ? "" : "s");
+      }
+
+      function setActive(id) {
+        state.active = id;
+        syncActiveClasses();
+      }
+
+      function syncActiveClasses() {
+        document.querySelectorAll("[data-cite]").forEach((el) => {
+          el.classList.toggle(
+            "mrg-active",
+            state.active !== null && el.getAttribute("data-cite") === state.active,
+          );
+        });
+      }
+
+      function attachHoverHandlers(container) {
+        if (!container) return;
+        container.querySelectorAll("[data-cite]").forEach((el) => {
+          el.onmouseenter = () => setActive(el.getAttribute("data-cite"));
+          el.onmouseleave = () => setActive(null);
+        });
+      }
+
+      function paragraphTag(para) {
+        if (para.heading === 0) return { open: '<div class="mrg-doc-h mrg-doc-h0 mrg-serif">', close: "</div>" };
+        if (para.heading != null)
+          return {
+            open: '<div class="mrg-doc-h mrg-doc-h' + Math.min(para.heading, 3) + ' mrg-serif">',
+            close: "</div>",
+          };
+        return { open: '<p class="mrg-doc-p mrg-serif">', close: "</p>" };
+      }
+
+      function noticeEl(html) {
+        const n = document.createElement("div");
+        n.className = "mrg-notice";
+        n.innerHTML = html;
+        return n;
+      }
+
+      // ---- file handling ----
+
+      const STEPS = [
+        "Reading document…",
+        "Finding references & matching citations…",
+        "Generating footnotes…",
+      ];
+      let stepTimers = [];
+
+      function clearStepTimers() {
+        stepTimers.forEach(clearTimeout);
+        stepTimers = [];
+      }
+
+      async function handleFile(file) {
+        if (!/\.docx$/i.test(file.name)) {
+          state.error =
+            "MIWIM reads .docx files. Save your document as .docx and try again.";
+          state.stage = "empty";
+          render();
+          return;
+        }
+
+        state.error = null;
+        state.fileName = file.name;
+        state.stage = "processing";
+        state.stepIndex = 0;
+        render();
+
+        clearStepTimers();
+        stepTimers.push(
+          setTimeout(() => {
+            state.stepIndex = 1;
+            render();
+          }, 350),
+        );
+
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          state.originalArrayBuffer = arrayBuffer;
+          const result = await engine.analyzeDocx(arrayBuffer);
+
+          stepTimers.push(
+            setTimeout(() => {
+              state.stepIndex = 2;
+              render();
+            }, 700),
+          );
+          stepTimers.push(
+            setTimeout(() => {
+              state.docTitle = result.docTitle;
+              state.bodyParas = result.bodyParas;
+              state.refs = result.refs;
+              state.hasRefsSection = result.hasRefsSection;
+              state.unmatched = result.unmatched;
+              state.citationCount = result.citationCount;
+              state.notes = result.notes;
+              state.orphanFootnotes = result.orphanFootnotes;
+              state.alreadyConverted = result.alreadyConverted;
+              state.stage = "done";
+              render();
+            }, 1050),
+          );
+        } catch (err) {
+          clearStepTimers();
+          state.stage = "empty";
+          state.error = err.message || "Something went wrong reading that file.";
+          render();
+        }
+      }
+
+      function reset() {
+        clearStepTimers();
+        Object.assign(state, {
+          stage: "empty",
+          stepIndex: 0,
+          fileName: "",
+          active: null,
+          dragOver: false,
+          error: null,
+          originalArrayBuffer: null,
+          docTitle: "",
+          bodyParas: [],
+          refs: [],
+          hasRefsSection: true,
+          unmatched: [],
+          citationCount: 0,
+          notes: [],
+          orphanFootnotes: [],
+          alreadyConverted: false,
+        });
+        render();
+      }
+
+      async function handleDownload() {
+        if (!state.originalArrayBuffer) return;
+        try {
+          const { zip } = await engine.buildConvertedDocx(
+            state.originalArrayBuffer,
+            state.refs,
+          );
+          const blob = await zip.generateAsync({
+            type: "blob",
+            mimeType:
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          });
+          const outName =
+            state.fileName.replace(/\.docx$/i, "") + "-footnotes.docx";
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = outName;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 4000);
+        } catch (err) {
+          alert("Couldn't generate the download: " + (err.message || err));
+        }
+      }
+
+      // ---- rendering ----
+
+      function render() {
+        renderTopbarActions();
+        renderLeft();
+        renderRight();
+        renderFab();
+        document.getElementById("mrg-filename-left").textContent =
+          state.stage !== "empty" ? state.fileName : "";
+        document.getElementById("mrg-filename-right").textContent =
+          state.stage === "done"
+            ? state.citationCount === 0
+              ? state.notes.length
+                ? plural(state.notes.length, "existing footnote") + ", unchanged"
+                : "nothing to convert"
+              : plural(state.notes.length, "footnote") + " in reading order"
+            : "";
+      }
+
+      function renderTopbarActions() {
+        const el = document.getElementById("mrg-topbar-actions");
+        el.innerHTML = "";
+        if (state.stage === "empty") return;
+        const btn = document.createElement("button");
+        btn.className = "mrg-btn";
+        btn.textContent = "Start over";
+        btn.onclick = reset;
+        el.appendChild(btn);
+      }
+
+      function renderDropZone(el) {
+        const drop = document.createElement("div");
+        drop.className = "mrg-drop" + (state.dragOver ? " mrg-drag" : "");
+        drop.innerHTML = `
+          <div class="mrg-drop-title">Drop a .docx file here</div>
+          <div class="mrg-drop-sub">or <label style="color:var(--slate);text-decoration:underline;cursor:pointer;">browse your files
+            <input type="file" accept=".docx" style="display:none" id="mrg-file-input" />
+          </label></div>
+        `;
+        drop.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          state.dragOver = true;
+          drop.classList.add("mrg-drag");
+        });
+        drop.addEventListener("dragleave", () => {
+          state.dragOver = false;
+          drop.classList.remove("mrg-drag");
+        });
+        drop.addEventListener("drop", (e) => {
+          e.preventDefault();
+          state.dragOver = false;
+          const f = e.dataTransfer.files && e.dataTransfer.files[0];
+          if (f) handleFile(f);
+        });
+        el.appendChild(drop);
+        drop.querySelector("#mrg-file-input").addEventListener("change", (e) => {
+          const f = e.target.files && e.target.files[0];
+          if (f) handleFile(f);
+        });
+        if (state.error) {
+          const err = document.createElement("div");
+          err.className = "mrg-error";
+          err.textContent = state.error;
+          el.appendChild(err);
+        }
+      }
+
+      // A note's clickable id, used to link a marker in the text to its row in
+      // the list below. New notes hover as a group with their reference (all
+      // three "(ASD 2025)" marks light up together); existing footnotes are
+      // individual, because each one is its own note.
+      function noteKey(note) {
+        return note.kind === "new" ? note.refId : "fn" + note.footnoteId;
+      }
+
+      function partKey(part) {
+        return part.type === "cite" ? part.refId : "fn" + part.footnoteId;
+      }
+
+      function noteUrl(note) {
+        if (note.kind === "existing") return note.url;
+        const ref = state.refs.find((r) => r.id === note.refId);
+        return ref ? ref.url : null;
+      }
+
+      // What the footnote will actually say. New notes carry the source URL;
+      // when a reference has no URL its full text is written instead, so the
+      // preview shows that rather than an empty line.
+      function noteBodyText(note) {
+        if (note.kind === "existing") return note.text;
+        const ref = state.refs.find((r) => r.id === note.refId);
+        if (!ref) return "";
+        return ref.url ? "" : ref.text;
+      }
+
+      function renderDocumentSheet(mode) {
+        const sheet = document.createElement("div");
+        sheet.className = "mrg-sheet";
+        let html = `<div class="mrg-doc-title mrg-serif">${escapeHtml(state.docTitle)}</div>`;
+
+        state.bodyParas.forEach((para) => {
+          const tag = paragraphTag(para);
+          html += tag.open;
+          para.parts.forEach((part) => {
+            if (part.type === "text") {
+              html += `<span>${escapeHtml(part.value)}</span>`;
+              return;
+            }
+            const key = partKey(part);
+            // A footnote the document already had is shown in both panes as a
+            // footnote, because that is what it is in both. Only citations
+            // change between the two sides.
+            if (part.type === "note") {
+              html += `<sup class="mrg-note mrg-note-existing" data-cite="${key}">${part.n}</sup>`;
+              return;
+            }
+            if (mode === "original") {
+              html += `<span class="mrg-cite" data-cite="${key}">${escapeHtml(part.text)}</span>`;
+              return;
+            }
+            const ref = state.refs.find((r) => r.id === part.refId);
+            const nolink = ref && ref.url ? "" : " mrg-nolink";
+            html += `<sup class="mrg-note${nolink}" data-cite="${key}">${part.n}</sup>`;
+          });
+          html += tag.close;
+        });
+
+        sheet.innerHTML = html;
+        return sheet;
+      }
+
+      function sheetDivider(sheet, title) {
+        const hr = document.createElement("hr");
+        hr.className = "mrg-hr";
+        sheet.appendChild(hr);
+        const heading = document.createElement("div");
+        heading.className = "mrg-fn-heading";
+        heading.textContent = title;
+        sheet.appendChild(heading);
+      }
+
+      /** One row in a footnote list: number, body text, link, spacing. */
+      function renderNoteRow(note, options) {
+        options = options || {};
+        const row = document.createElement("div");
+        row.className = "mrg-fn-item mrg-fn-note";
+        row.setAttribute("data-cite", noteKey(note));
+
+        const label = document.createElement("span");
+        label.className = "mrg-fn-num";
+        label.textContent = note.n + ".";
+        row.appendChild(label);
+
+        const body = document.createElement("span");
+        body.className = "mrg-fn-body";
+
+        const text = noteBodyText(note);
+        if (text) {
+          const textSpan = document.createElement("span");
+          textSpan.className = "mrg-fn-text";
+          textSpan.textContent = text;
+          body.appendChild(textSpan);
+        }
+
+        const url = noteUrl(note);
+        if (url) {
+          const link = document.createElement("a");
+          link.className = "mrg-fn-link";
+          link.href = url;
+          link.target = "_blank";
+          link.rel = "noreferrer noopener";
+          link.textContent = url;
+          body.appendChild(link);
+        } else if (options.allowUrlEntry && note.kind === "new") {
+          const ref = state.refs.find((r) => r.id === note.refId);
+          const badge = document.createElement("span");
+          badge.className = "mrg-fn-missing-badge";
+          badge.textContent = "no link";
+          body.appendChild(badge);
+
+          const input = document.createElement("input");
+          input.className = "mrg-fn-url-input";
+          input.type = "url";
+          input.placeholder = "Paste source URL…";
+          input.value = "";
+          input.addEventListener("change", (e) => {
+            if (ref) ref.url = e.target.value.trim() || null;
+            renderRight();
+          });
+          body.appendChild(input);
+        }
+
+        row.appendChild(body);
+        return row;
+      }
+
+      function renderLeft() {
+        const el = document.getElementById("mrg-left-content");
+        el.innerHTML = "";
+
+        if (state.stage === "empty") return renderDropZone(el);
+
+        if (state.stage === "processing") {
+          const ph = document.createElement("div");
+          ph.className = "mrg-empty-right";
+          ph.innerHTML = `<div class="mrg-empty-right-title">Reading ${escapeHtml(state.fileName)}…</div>`;
+          el.appendChild(ph);
+          return;
+        }
+
+        const sheet = renderDocumentSheet("original");
+
+        // Footnotes the document arrived with, listed before the references so
+        // the order on screen matches the order at the foot of a real page.
+        const existingNotes = state.notes.filter((n) => n.kind === "existing");
+        if (existingNotes.length) {
+          sheetDivider(sheet, "Footnotes already in this document");
+          existingNotes.forEach((note) => sheet.appendChild(renderNoteRow(note)));
+        }
+
+        sheetDivider(sheet, "References");
+        if (state.refs.length) {
+          state.refs.forEach((r) => {
+            const row = document.createElement("div");
+            row.className = "mrg-fn-item";
+            row.setAttribute("data-cite", r.id);
+            row.appendChild(document.createTextNode(r.text));
+            sheet.appendChild(row);
+          });
+        } else {
+          const empty = document.createElement("div");
+          empty.className = "mrg-fn-empty";
+          empty.textContent = state.hasRefsSection
+            ? "A references heading was found, but no reference entries followed it."
+            : "No References, Bibliography, or Works Cited section was found.";
+          sheet.appendChild(empty);
+        }
+
+        el.appendChild(sheet);
+        attachHoverHandlers(sheet);
+      }
+
+      function renderRight() {
+        const el = document.getElementById("mrg-right-content");
+        el.innerHTML = "";
+
+        if (state.stage === "empty") {
+          const ph = document.createElement("div");
+          ph.className = "mrg-empty-right";
+          ph.innerHTML = `
+            <div class="mrg-empty-right-title">Your converted document will appear here</div>
+            <div class="mrg-empty-right-sub">Citations become numbered footnotes, each linked to its reference.</div>
+          `;
+          el.appendChild(ph);
+          return;
+        }
+
+        if (state.stage === "processing") {
+          const steps = document.createElement("div");
+          steps.className = "mrg-steps";
+          steps.innerHTML = `<div class="mrg-spinner"></div><div class="mrg-step-text">${STEPS[state.stepIndex]}</div>`;
+          el.appendChild(steps);
+          return;
+        }
+
+        // --- notices, most important first ---
+
+        if (state.alreadyConverted) {
+          // The document is already in footnote form. Nothing to convert, and
+          // saying so plainly is more use than an error about missing
+          // references, which would suggest something is wrong when nothing is.
+          el.appendChild(
+            noticeEl(
+              `<strong>This document already uses footnotes.</strong> ${plural(state.notes.length, "footnote")} found and no in-text citations left to convert, so it's shown as it is.`,
+            ),
+          );
+        } else if (!state.refs.length) {
+          el.appendChild(
+            noticeEl(
+              state.hasRefsSection
+                ? `<strong>No reference entries found.</strong> A references heading was found, but nothing followed it, so there's nothing to convert.`
+                : `<strong>No References, Bibliography, or Works Cited section found.</strong> Nothing to convert — the document is shown as-is.`,
+            ),
+          );
+        }
+
+        const existingCount = state.notes.filter((n) => n.kind === "existing").length;
+        if (existingCount && state.citationCount) {
+          // Mixed document: numbering runs across both kinds, which is worth
+          // saying before someone wonders why their first citation is note 4.
+          el.appendChild(
+            noticeEl(
+              `<strong>${plural(existingCount, "footnote")} already in this document</strong> ${existingCount === 1 ? "is" : "are"} kept as ${existingCount === 1 ? "it is" : "they are"}. The ${plural(state.citationCount, "new footnote")} ${state.citationCount === 1 ? "is" : "are"} numbered alongside ${existingCount === 1 ? "it" : "them"}, in reading order.`,
+            ),
+          );
+        }
+
+        if (state.unmatched.length) {
+          const sample = state.unmatched
+            .slice(0, 3)
+            .map((u) => escapeHtml(u.text))
+            .join(" · ");
+          el.appendChild(
+            noticeEl(
+              `<strong>${plural(state.unmatched.length, "citation")} couldn't be matched</strong> to a reference entry, so ${state.unmatched.length === 1 ? "it was" : "they were"} left in the text untouched: ${sample}${state.unmatched.length > 3 ? " …" : ""}`,
+            ),
+          );
+        }
+
+        const uncited = state.refs.filter((r) => !r.citationCount);
+        if (uncited.length) {
+          el.appendChild(
+            noticeEl(
+              `<strong>${plural(uncited.length, "reference")} ${uncited.length === 1 ? "is" : "are"} never cited</strong> in the text. ${uncited.length === 1 ? "It stays" : "They stay"} in the reference list rather than becoming a footnote.`,
+            ),
+          );
+        }
+
+        const missing = state.refs.filter((r) => !r.url && r.citationCount);
+        if (missing.length) {
+          el.appendChild(
+            noticeEl(
+              `<strong>${plural(missing.length, "reference")} had no link.</strong> Add a source URL below, or leave it blank to write the full reference into the footnote instead.`,
+            ),
+          );
+        }
+
+        // --- converted document + footnote list ---
+
+        const sheet = renderDocumentSheet("converted");
+        sheetDivider(sheet, "Footnotes");
+
+        if (state.notes.length) {
+          // Every note in the order a reader meets it, existing and new
+          // together, because that is the order Word will number them in.
+          state.notes.forEach((note) => {
+            sheet.appendChild(renderNoteRow(note, { allowUrlEntry: true }));
+          });
+        } else {
+          const empty = document.createElement("div");
+          empty.className = "mrg-fn-empty";
+          empty.textContent = state.hasRefsSection
+            ? "A references heading was found, but no reference entries followed it."
+            : "No References, Bibliography, or Works Cited section was found.";
+          sheet.appendChild(empty);
+        }
+
+        if (state.orphanFootnotes.length) {
+          sheetDivider(sheet, "Unreferenced footnotes");
+          const note = document.createElement("div");
+          note.className = "mrg-fn-empty";
+          note.textContent =
+            plural(state.orphanFootnotes.length, "footnote") +
+            " exists in the file but nothing in the text points to it. It is left untouched.";
+          sheet.appendChild(note);
+        }
+
+        el.appendChild(sheet);
+        attachHoverHandlers(sheet);
+        attachHoverHandlers(document.getElementById("mrg-left-content"));
+        syncActiveClasses();
+      }
+
+      function renderFab() {
+        const slot = document.getElementById("mrg-fab-slot");
+        slot.innerHTML = "";
+        if (state.stage !== "done") return;
+        const btn = document.createElement("button");
+        btn.className = "mrg-btn mrg-btn-primary mrg-fab";
+        btn.disabled = state.citationCount === 0;
+        btn.title = btn.disabled
+          ? state.alreadyConverted
+            ? "Nothing to convert — this document already uses footnotes"
+            : "Nothing to convert"
+          : "Download .docx";
+        btn.setAttribute("aria-label", btn.title);
+        btn.textContent = "💾";
+        btn.onclick = handleDownload;
+        slot.appendChild(btn);
+      }
+
+      // Whole-window drag and drop, so the file lands wherever it is dropped.
+      window.addEventListener("dragover", (e) => e.preventDefault());
+      window.addEventListener("drop", (e) => {
+        e.preventDefault();
+        if (state.stage !== "empty") return;
+        const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (f) handleFile(f);
+      });
+
+      render();
+
+      // Lightweight debug hook — harmless in production, useful in the console.
+      window.__mrg_debug = () => state;
+    </script>
+  </body>
+</html>

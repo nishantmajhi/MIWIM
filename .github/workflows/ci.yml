@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      # package-lock.json is gitignored here, so there is nothing for npm ci
+      # or the npm cache to work from.
+      - run: npm install
+      - run: npm test
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      # package-lock.json is gitignored here, so there is nothing for npm ci
+      # or the npm cache to work from.
+      - run: npm install
+      # Unlike the other runners here, this one fails rather than skipping
+      # when it finds no Chrome.
+      - run: npm run test:browser
